@@ -8,31 +8,16 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=SPOTIPY_CL
 
 def reduce_tracks_info(tracks):
     reduced_tracks_info = []
-    for track in tracks["items"]:
-        track_info = {}
-        track_info["name"] = track["track"]["name"]
-        track_info["uri"] = track["track"]["uri"]
-        track_info["cover"] = track["track"]["album"]["images"][2]["url"]
+    for item in tracks["items"]:
+        track_info = {"name": "", "uri": "", "cover": "" }
+        track_info["name"] = item["track"]["name"]
+        track_info["uri"] = item["track"]["uri"]
+        track_info["cover"] = item["track"]["album"]["images"][2]["url"]
         reduced_tracks_info += [track_info]
     return reduced_tracks_info
 
 def get_dominant_color(image_url):
-    # from io import BytesIO
-    #
-    # import requests
-    # from PIL import Image
-    #
-    # resp = requests.get(image_url)
-    # assert resp.ok
-    # img = Image.open(BytesIO(resp.content))
-    #
-    # img2 = img.resize((1, 1))
-    #
-    # color = img2.getpixel((0, 0))
-    # return color
-
-    # from colorthief import ColorThief
-    # return ColorThief(image_url).get_color(quality=1)
+    # TODO: Find better algorithm for getting dominant color in an image
 
     from PIL import Image
     import requests
@@ -50,44 +35,36 @@ def get_dominant_color(image_url):
 
     return dominant_color
 
+def lum(r,g,b):
+    import math
+    return math.sqrt( .241 * r + .691 * g + .068 * b )
+
 def sort_tracks(tracks):
-    import colorsys
-
-    # tracks.sort(key=lambda track: colorsys.rgb_to_hls(*track["color"]))
-
     tracks.sort(key=lambda track: track["color"])
-
+    tracks.sort(key=lambda track: lum(*track["color"]))
     return tracks
 
-# def main():
-playlists = sp.current_user_playlists()
-for index, item in enumerate(playlists["items"]):
-    print(f"{str(index).rjust(2)} - {item['name']}")
 
-index = int(input("Enter playlist you want to sort: "))
-playlist_id = playlists["items"][index]["id"]
+def main():
+    playlists = sp.current_user_playlists()
+    for index, item in enumerate(playlists["items"]):
+        print(f"{str(index).rjust(2)} - {item['name']}")
 
-playlist_id
+    index = int(input("Enter playlist you want to sort: "))
+    playlist_id = playlists["items"][index]["id"]
 
-tracks = sp.playlist_tracks(playlist_id)
-tracks_info = reduce_tracks_info(tracks)
+    tracks = sp.playlist_tracks(playlist_id)
+    tracks_info = reduce_tracks_info(tracks)
 
-tracks_info
+    for track in tracks_info:
+        track["color"] = get_dominant_color(track["cover"])
 
+    tracks_sorted = sort_tracks(tracks_info)
 
-tracks_info[0]["color"] = get_dominant_color(tracks_info[0]["cover"])
-
-for track in tracks_info:
-    track["color"] = get_dominant_color(track["cover"])
-
-tracks_sorted = sort_tracks(tracks_info)
-
-new_playlist = sp.user_playlist_create(sp.me()["id"], "test")
-tracks_uri = [track["uri"] for track in tracks_sorted]
-sp.playlist_add_items(new_playlist["id"], tracks_uri)
+    new_playlist = sp.user_playlist_create(sp.me()["id"], "test")
+    tracks_uri = [track["uri"] for track in tracks_sorted]
+    sp.playlist_add_items(new_playlist["id"], tracks_uri)
 
 
-
-#
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
