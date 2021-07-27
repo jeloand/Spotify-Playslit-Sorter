@@ -40,7 +40,7 @@ def lum(r,g,b):
     return math.sqrt( .241 * r + .691 * g + .068 * b )
 
 def sort_tracks(tracks):
-    tracks.sort(key=lambda track: track["color"])
+    # tracks.sort(key=lambda track: track["color"])
     tracks.sort(key=lambda track: lum(*track["color"]))
     return tracks
 
